@@ -95,6 +95,19 @@ void LocalDmx::init() {
     irq_set_exclusive_handler(DMA_IRQ_0, dma_handler_0_0_c);
     irq_set_enabled(DMA_IRQ_0, true);
 
+    // Write 4 bit MARK-AFTER-BREAK (16µs) to all universes
+    // Usually, DMX needs a BREAK (LOW level) of at least 96µs before
+    // MARK-AFTER-BREAK (MAB, HIGH LEVEL)
+    // However, since the line is already at a defined LOW level
+    // and we need CPU time to prepare the wavetable (~3ms), we don't
+    // generate a BREAK. We start right away with the MAB
+    wavetable[0] = 0xFFFFFFFF;
+    wavetable[1] = 0xFFFFFFFF;
+    wavetable[2] = 0xFFFFFFFF;
+    wavetable[3] = 0xFFFFFFFF;
+    // Start bit
+    wavetable[4] = 0x0;
+
     // Manually call the handler once, to trigger the first transfer
     //dma_handler();
     this->dma_handler_0_0();
@@ -111,8 +124,8 @@ bool LocalDmx::setPort(uint8_t portId, uint8_t* source, uint16_t sourceLength) {
     uint16_t length = MIN(sourceLength, 512);
 
     critical_section_enter_blocking(&bufferLock);
-    memset(this->buffer[portId], 0x00, 512);
     memcpy(this->buffer[portId], source, length);
+    memset(this->buffer[portId][length], 0x00, 512 - length);
     critical_section_exit(&bufferLock);
 
     return true;
@@ -120,34 +133,34 @@ bool LocalDmx::setPort(uint8_t portId, uint8_t* source, uint16_t sourceLength) {
 
 // Appends one bit to the wavetable for port "port" at the position
 // bitoffset. The offset will be increased by 1!
-void LocalDmx::wavetable_write_bit(int port, uint16_t* bitoffset, uint8_t value) {
+void LocalDmx::wavetable_write_bit(int port, uint16_t** table, uint8_t value) {
     if (!value) {
         // Since initial value is 0, just increment the offset
-        (*bitoffset)++;
+        (*table)++;
         return;
     }
 
-    wavetable[(*bitoffset)++] |= (1 << port);
+    (*table)++ |= (1 << port);
 };
 
 // Appends one byte (including on start and two stop bits) to the wavetable for
 // given port at the given bit offset. This offset will be increased!
-void LocalDmx::wavetable_write_byte(int port, uint16_t* bitoffset, uint8_t value) {
+void LocalDmx::wavetable_write_byte(int port, uint16_t* table, uint8_t value) {
     // Start bit is 0
-    this->wavetable_write_bit(port, bitoffset, 0);
+    this->wavetable_write_bit(port, table, 0);
     // I assume LSB is first? At least it works :)
-    this->wavetable_write_bit(port, bitoffset, (value >> 0) & 0x01);
-    this->wavetable_write_bit(port, bitoffset, (value >> 1) & 0x01);
-    this->wavetable_write_bit(port, bitoffset, (value >> 2) & 0x01);
-    this->wavetable_write_bit(port, bitoffset, (value >> 3) & 0x01);
-    this->wavetable_write_bit(port, bitoffset, (value >> 4) & 0x01);
-    this->wavetable_write_bit(port, bitoffset, (value >> 5) & 0x01);
-    this->wavetable_write_bit(port, bitoffset, (value >> 6) & 0x01);
-    this->wavetable_write_bit(port, bitoffset, (value >> 7) & 0x01);
+    this->wavetable_write_bit(port, table, (value >> 0) & 0x01);
+    this->wavetable_write_bit(port, table, (value >> 1) & 0x01);
+    this->wavetable_write_bit(port, table, (value >> 2) & 0x01);
+    this->wavetable_write_bit(port, table, (value >> 3) & 0x01);
+    this->wavetable_write_bit(port, table, (value >> 4) & 0x01);
+    this->wavetable_write_bit(port, table, (value >> 5) & 0x01);
+    this->wavetable_write_bit(port, table, (value >> 6) & 0x01);
+    this->wavetable_write_bit(port, table, (value >> 7) & 0x01);
 
     // Write two stop bits
-    this->wavetable_write_bit(port, bitoffset, 1);
-    this->wavetable_write_bit(port, bitoffset, 1);
+    this->wavetable_write_bit(port, table, 1);
+    this->wavetable_write_bit(port, table, 1);
 };
 
 void dma_handler_0_0_c() {
@@ -158,7 +171,7 @@ void dma_handler_0_0_c() {
 // DMA transfer
 void LocalDmx::dma_handler_0_0() {
     uint8_t universe;   // Loop over the 16 universes
-    uint16_t bitoffset; // Current bit offset inside current universe
+    uint16_t *table; // Pointer to the current output word in the table
     uint16_t chan;      // Current channel in universe
 
 #ifdef PIN_TRIGGER
@@ -168,34 +181,21 @@ void LocalDmx::dma_handler_0_0() {
 
     critical_section_enter_blocking(&bufferLock);
 
-    // Zero the wavetable. *2 because of the data type: uint16_t = 2 byte per element
-    memset(wavetable, 0x00, WAVETABLE_LENGTH * sizeof(uint16_t));
+    // Zero the wavetable after the MAB.
+    // *2 because of the data type: uint16_t = 2 byte per element
+    memset(&wavetable[5], 0x00, (WAVETABLE_LENGTH - 5) * sizeof(uint16_t));
 
     // Loop through all 16 universes
     for (universe = 0; universe < 16; universe++) {
-        // Usually, DMX needs a BREAK (LOW level) of at least 96µs before
-        // MARK-AFTER-BREAK (MAB, HIGH LEVEL)
-        // However, since the line is already at a defined LOW level
-        // and we need CPU time to prepare the wavetable (~3ms), we don't
-        // generate a BREAK. We start right away with the MAB
-        bitoffset = 0;
-
-        // Write 4 bit MARK-AFTER-BREAK (16µs)
-        wavetable_write_bit(universe, &bitoffset, 1);
-        wavetable_write_bit(universe, &bitoffset, 1);
-        wavetable_write_bit(universe, &bitoffset, 1);
-        wavetable_write_bit(universe, &bitoffset, 1);
-
-        // Write the startbyte
-        wavetable_write_byte(universe, &bitoffset, 0);
+        table = &wavetable[5];  //Start after the MAB and start bit
 
         // Write the data (channel values) from the universe's buffer
         for (chan = 0; chan < 512; chan++) {
-            wavetable_write_byte(universe, &bitoffset, this->buffer[universe][chan]);
+            wavetable_write_byte(universe, &table, this->buffer[universe][chan]);
         }
 
         // Leave the line at a defined LOW level (BREAK) until the next packet starts
-        wavetable_write_bit(universe, &bitoffset, 0);
+        wavetable_write_bit(universe, &table, 0);
     }
 
     critical_section_exit(&bufferLock);
