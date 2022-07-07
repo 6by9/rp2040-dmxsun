@@ -148,21 +148,23 @@ void LocalDmx::wavetable_write_bit(int port, uint16_t** table, uint8_t value, ui
 void LocalDmx::wavetable_write_byte(int port, uint16_t** table, uint8_t value, uint16_t port_mask) {
     uint8_t bitmask;
 
-    // Start bit is 0
-    this->wavetable_write_bit(port, table, 0, port_mask);
-    // I assume LSB is first? At least it works :)
-    this->wavetable_write_bit(port, table, value & 0x01, port_mask);
-    this->wavetable_write_bit(port, table, value & 0x02, port_mask);
-    this->wavetable_write_bit(port, table, value & 0x04, port_mask);
-    this->wavetable_write_bit(port, table, value & 0x08, port_mask);
-    this->wavetable_write_bit(port, table, value & 0x10, port_mask);
-    this->wavetable_write_bit(port, table, value & 0x20, port_mask);
-    this->wavetable_write_bit(port, table, value & 0x40, port_mask);
-    this->wavetable_write_bit(port, table, value & 0x80, port_mask);
+    (*table)++;         //Start bit is 0
 
-    // Write two stop bits
-    this->wavetable_write_bit(port, table, 1, port_mask);
-    this->wavetable_write_bit(port, table, 1, port_mask);
+    // 8 data bits, starting with LSB
+    bitmask = 0x01;
+    do
+    {
+        if (value & bitmask)
+            *(*table) |= port_mask;
+        (*table)++;
+        bitmask <<= 1;  // Will shift around to 0 after last bit
+    } while (bitmask);
+
+    // 2 stop bits (state 1)
+    *(*table) |= port_mask;
+    (*table)++;
+    *(*table) |= port_mask;
+    (*table)++;
 };
 
 void dma_handler_0_0_c() {
