@@ -171,8 +171,9 @@ void dma_handler_0_0_c() {
 // DMA transfer
 void LocalDmx::dma_handler_0_0() {
     uint8_t universe;   // Loop over the 16 universes
-    uint16_t *table; // Pointer to the current output word in the table
-    uint16_t chan;      // Current channel in universe
+    uint16_t *table;    // Pointer to the current output word in the table
+    uint8_t *buffer;   // Pointer to current source data;
+    uint8_t *buf_end;  // Pointer to the end of the current channel's data (512 channels)
 
 #ifdef PIN_TRIGGER
     // Drive the TRIGGER GPIO to LOW
@@ -190,8 +191,10 @@ void LocalDmx::dma_handler_0_0() {
         table = &wavetable[5];  //Start after the MAB and start bit
 
         // Write the data (channel values) from the universe's buffer
-        for (chan = 0; chan < 512; chan++) {
-            wavetable_write_byte(universe, &table, this->buffer[universe][chan]);
+        buffer = this->buffer[universe];
+        buf_end = &this->buffer[universe+1][0];
+        for (; buffer < buf_end; buffer++) {
+            wavetable_write_byte(universe, &table, *buffer);
         }
 
         // Leave the line at a defined LOW level (BREAK) until the next packet starts
