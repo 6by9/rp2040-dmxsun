@@ -133,34 +133,36 @@ bool LocalDmx::setPort(uint8_t portId, uint8_t* source, uint16_t sourceLength) {
 
 // Appends one bit to the wavetable for port "port" at the position
 // bitoffset. The offset will be increased by 1!
-void LocalDmx::wavetable_write_bit(int port, uint16_t** table, uint8_t value) {
+void LocalDmx::wavetable_write_bit(int port, uint16_t** table, uint8_t value, uint16_t port_mask) {
     if (!value) {
         // Since initial value is 0, just increment the offset
         (*table)++;
         return;
     }
 
-    *((*table)++) |= (1 << port);
+    *((*table)++) |= port_mask;
 };
 
 // Appends one byte (including on start and two stop bits) to the wavetable for
 // given port at the given bit offset. This offset will be increased!
-void LocalDmx::wavetable_write_byte(int port, uint16_t** table, uint8_t value) {
+void LocalDmx::wavetable_write_byte(int port, uint16_t** table, uint8_t value, uint16_t port_mask) {
+    uint8_t bitmask;
+
     // Start bit is 0
-    this->wavetable_write_bit(port, table, 0);
+    this->wavetable_write_bit(port, table, 0, port_mask);
     // I assume LSB is first? At least it works :)
-    this->wavetable_write_bit(port, table, value & 0x01);
-    this->wavetable_write_bit(port, table, value & 0x02);
-    this->wavetable_write_bit(port, table, value & 0x04);
-    this->wavetable_write_bit(port, table, value & 0x08);
-    this->wavetable_write_bit(port, table, value & 0x10);
-    this->wavetable_write_bit(port, table, value & 0x20);
-    this->wavetable_write_bit(port, table, value & 0x40);
-    this->wavetable_write_bit(port, table, value & 0x80);
+    this->wavetable_write_bit(port, table, value & 0x01, port_mask);
+    this->wavetable_write_bit(port, table, value & 0x02, port_mask);
+    this->wavetable_write_bit(port, table, value & 0x04, port_mask);
+    this->wavetable_write_bit(port, table, value & 0x08, port_mask);
+    this->wavetable_write_bit(port, table, value & 0x10, port_mask);
+    this->wavetable_write_bit(port, table, value & 0x20, port_mask);
+    this->wavetable_write_bit(port, table, value & 0x40, port_mask);
+    this->wavetable_write_bit(port, table, value & 0x80, port_mask);
 
     // Write two stop bits
-    this->wavetable_write_bit(port, table, 1);
-    this->wavetable_write_bit(port, table, 1);
+    this->wavetable_write_bit(port, table, 1, port_mask);
+    this->wavetable_write_bit(port, table, 1, port_mask);
 };
 
 void dma_handler_0_0_c() {
@@ -174,6 +176,7 @@ void LocalDmx::dma_handler_0_0() {
     uint16_t *table;    // Pointer to the current output word in the table
     uint8_t *buffer;   // Pointer to current source data;
     uint8_t *buf_end;  // Pointer to the end of the current channel's data (512 channels)
+    uint16_t port_mask;
 
 #ifdef PIN_TRIGGER
     // Drive the TRIGGER GPIO to LOW
@@ -189,16 +192,17 @@ void LocalDmx::dma_handler_0_0() {
     // Loop through all 16 universes
     for (universe = 0; universe < 16; universe++) {
         table = &wavetable[5];  //Start after the MAB and start bit
+        port_mask = 1 << universe;
 
         // Write the data (channel values) from the universe's buffer
         buffer = this->buffer[universe];
         buf_end = &this->buffer[universe+1][0];
         for (; buffer < buf_end; buffer++) {
-            wavetable_write_byte(universe, &table, *buffer);
+            wavetable_write_byte(universe, &table, *buffer, port_mask);
         }
 
         // Leave the line at a defined LOW level (BREAK) until the next packet starts
-        wavetable_write_bit(universe, &table, 0);
+        wavetable_write_bit(universe, &table, 0, port_mask);
     }
 
     critical_section_exit(&bufferLock);
