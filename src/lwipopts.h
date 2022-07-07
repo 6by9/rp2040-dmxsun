@@ -42,7 +42,7 @@
 #define LWIP_RAW                        0
 #define LWIP_NETCONN                    0
 #define LWIP_SOCKET                     0
-#define LWIP_DHCP                       0
+#define LWIP_DHCP                       1
 #define LWIP_ICMP                       1
 #define LWIP_UDP                        1
 #define LWIP_TCP                        1
@@ -72,6 +72,6 @@
 #define HTTPD_USE_CUSTOM_FSDATA         1
 #define HTTPD_FSDATA_FILE               "../../../../../src/fsdata.c"
 
-#define LWIP_SINGLE_NETIF               1
+#define LWIP_SINGLE_NETIF               0
 
 #endif /* __LWIPOPTS_H__ */

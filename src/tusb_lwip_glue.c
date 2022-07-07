@@ -227,7 +227,7 @@ void wait_for_netif_is_up()
     while (!netif_is_up(&netif_data));
 }
 
-
+#if 0
 /* lwip platform specific routines for Pico */
 auto_init_mutex(lwip_mutex);
 static int lwip_mutex_count = 0;
@@ -267,3 +267,4 @@ uint32_t sys_now(void)
 {
     return to_ms_since_boot( get_absolute_time() );
 }
+#endif

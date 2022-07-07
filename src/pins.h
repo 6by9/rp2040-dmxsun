@@ -42,7 +42,7 @@
 #define PIN_IO11_3     21
 
 // Pico's on-board, single-color status LED
-#define PIN_LED        PICO_DEFAULT_LED_PIN // = 25 on the pico
+#define PIN_LED        25 //PICO_DEFAULT_LED_PIN // = 25 on the pico
 
 // WS2812-based status LEDs
 #define PIN_LEDS       22

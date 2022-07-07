@@ -107,16 +107,16 @@ target_compile_definitions(${CMAKE_PROJECT_NAME}
 
 ## LWIP works a little bit different than the other libraries since
 ## it ships its onw FileList
-set(LWIP_DIR ${CMAKE_CURRENT_LIST_DIR}/../lib/lwip)
-set (LWIP_INCLUDE_DIRS
-    "${LWIP_DIR}/src/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-include(${LWIP_DIR}/src/Filelists.cmake)
+#set(LWIP_DIR ${CMAKE_CURRENT_LIST_DIR}/../lib/lwip)
+#set (LWIP_INCLUDE_DIRS
+#    "${LWIP_DIR}/src/include"
+#    "${CMAKE_CURRENT_SOURCE_DIR}"
+#)
+#include(${LWIP_DIR}/src/Filelists.cmake)
 
 ## Needed so tusb_config.h is found by the tinyUSB-library included in the pico-sdk
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    ${LWIP_INCLUDE_DIRS}
+    #${LWIP_INCLUDE_DIRS}
     ${PICO_TINYUSB_PATH}/lib/networking
     ${CMAKE_CURRENT_LIST_DIR}
 )
@@ -132,8 +132,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     hardware_spi
     jsoncpp
     libb64
-    lwipallapps
-    lwipcore
+    pico_cyw43_arch_lwip_poll
+    pico_lwip_core
+    pico_lwip_http
     pico_multicore
     pico_stdlib
     pico_unique_id
