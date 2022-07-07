@@ -101,12 +101,12 @@ void LocalDmx::init() {
     // However, since the line is already at a defined LOW level
     // and we need CPU time to prepare the wavetable (~3ms), we don't
     // generate a BREAK. We start right away with the MAB
-    wavetable[0] = 0xFFFFFFFF;
-    wavetable[1] = 0xFFFFFFFF;
-    wavetable[2] = 0xFFFFFFFF;
-    wavetable[3] = 0xFFFFFFFF;
+    wavetable[0] = 0xFFFF;
+    wavetable[1] = 0xFFFF;
+    wavetable[2] = 0xFFFF;
+    wavetable[3] = 0xFFFF;
     // Start bit
-    wavetable[4] = 0x0;
+    wavetable[4] = 0x0000;
 
     // Manually call the handler once, to trigger the first transfer
     //dma_handler();
@@ -125,7 +125,7 @@ bool LocalDmx::setPort(uint8_t portId, uint8_t* source, uint16_t sourceLength) {
 
     critical_section_enter_blocking(&bufferLock);
     memcpy(this->buffer[portId], source, length);
-    memset(this->buffer[portId][length], 0x00, 512 - length);
+    memset(&this->buffer[portId][length], 0x00, 512 - length);
     critical_section_exit(&bufferLock);
 
     return true;
@@ -140,12 +140,12 @@ void LocalDmx::wavetable_write_bit(int port, uint16_t** table, uint8_t value) {
         return;
     }
 
-    (*table)++ |= (1 << port);
+    *((*table)++) |= (1 << port);
 };
 
 // Appends one byte (including on start and two stop bits) to the wavetable for
 // given port at the given bit offset. This offset will be increased!
-void LocalDmx::wavetable_write_byte(int port, uint16_t* table, uint8_t value) {
+void LocalDmx::wavetable_write_byte(int port, uint16_t** table, uint8_t value) {
     // Start bit is 0
     this->wavetable_write_bit(port, table, 0);
     // I assume LSB is first? At least it works :)
