@@ -149,14 +149,14 @@ void LocalDmx::wavetable_write_byte(int port, uint16_t** table, uint8_t value) {
     // Start bit is 0
     this->wavetable_write_bit(port, table, 0);
     // I assume LSB is first? At least it works :)
-    this->wavetable_write_bit(port, table, (value >> 0) & 0x01);
-    this->wavetable_write_bit(port, table, (value >> 1) & 0x01);
-    this->wavetable_write_bit(port, table, (value >> 2) & 0x01);
-    this->wavetable_write_bit(port, table, (value >> 3) & 0x01);
-    this->wavetable_write_bit(port, table, (value >> 4) & 0x01);
-    this->wavetable_write_bit(port, table, (value >> 5) & 0x01);
-    this->wavetable_write_bit(port, table, (value >> 6) & 0x01);
-    this->wavetable_write_bit(port, table, (value >> 7) & 0x01);
+    this->wavetable_write_bit(port, table, value & 0x01);
+    this->wavetable_write_bit(port, table, value & 0x02);
+    this->wavetable_write_bit(port, table, value & 0x04);
+    this->wavetable_write_bit(port, table, value & 0x08);
+    this->wavetable_write_bit(port, table, value & 0x10);
+    this->wavetable_write_bit(port, table, value & 0x20);
+    this->wavetable_write_bit(port, table, value & 0x40);
+    this->wavetable_write_bit(port, table, value & 0x80);
 
     // Write two stop bits
     this->wavetable_write_bit(port, table, 1);
