@@ -57,7 +57,7 @@ enum {
     BLINK_READY_SINGLE_UNI     = 42188,
     BLINK_READY_MULTI_UNI      = 21094,
 };
-#define BLINK_LED(div) clock_gpio_init(PIN_LED, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_RTC, div);
+#define BLINK_LED(div) {} //clock_gpio_init(PIN_LED, CLOCKS_CLK_GPOUT0_CTRL_AUXSRC_VALUE_CLK_RTC, div);
 
 // Super-globals (for all modules)
 Log logger;
